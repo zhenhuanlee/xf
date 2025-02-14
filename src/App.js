@@ -5,19 +5,19 @@ function App() {
   const videoRef = useRef(null);
   const [videos, setVideos] = useState([]);
   const [videoSrc, setVideoSrc] = useState(null);
-  const [currentIdx, setCurrentIdx] = useState(0);
+  const [currentIdx, setCurrentIdx] = useState(-1);
 
   function isVideo (entry) {
     return true
   }
 
   const handleFileChange = useCallback(async (event) => {
-    if (videos.length > 0) return
+    if (videos.length > 0) return;
     const directoryHandle = await window.showDirectoryPicker();
     
-    const _videos = []
+    const _videos = [];
     for await (const entry of directoryHandle.values()) {
-      if (!isVideo(entry)) continue
+      if (!isVideo(entry)) continue;
       const file = await entry.getFile();
       file._entry = entry;
       _videos.push(file);
@@ -28,7 +28,7 @@ function App() {
 
   useEffect(() => {
     videoRef.current.load();
-  }, [currentIdx, videoSrc])
+  }, [currentIdx, videoSrc]);
 
   const handleSwitch = useCallback((str) => {
     let targetIdx = currentIdx;
@@ -44,8 +44,6 @@ function App() {
       const video = videos[targetIdx];
       if (video._deleted) continue;
 
-      console.log('0000000000')
-  
       setCurrentIdx(targetIdx);
       const videoUrl = URL.createObjectURL(video);
       setVideoSrc(videoUrl);
@@ -84,7 +82,7 @@ function App() {
           break;
       }
     }
-  }, [currentIdx, handleSwitch, videos])
+  }, [currentIdx, handleSwitch, videos]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -95,9 +93,11 @@ function App() {
   }, [handleKeyDown]);
 
   return (
-    <div style={{textAlign: 'center'}}>
+    <div style={{ textAlign: 'center' }}>
       <video onClick={handleFileChange} ref={videoRef} className="fixed-video" autoPlay controls>
-        <source src={videoSrc} type="video/mp4" />
+        {videoSrc && (
+          <source src={videoSrc} type={videos[currentIdx]?.type || 'video/mp4'} />
+        )}
         Your browser does not support the video tag.
       </video>
     </div>
