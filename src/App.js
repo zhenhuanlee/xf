@@ -7,24 +7,36 @@ function App() {
   const [videoSrc, setVideoSrc] = useState(null);
   const [currentIdx, setCurrentIdx] = useState(-1);
 
-  function isVideo (entry) {
-    return true
+  function isVideo(entry) {
+    const videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.webm', '.ogg', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.m4v', '.ts', '.rm', '.vob', '.f4v', '.svi', '.drc', '.m2ts', '.h264'];
+    const fileName = entry.name || '';
+    const fileExtension = fileName.slice(((fileName.lastIndexOf(".") - 1) >>> 0) + 2).toLowerCase();
+  
+    return entry.kind === 'file' && videoExtensions.includes(`.${fileExtension}`);
   }
+
+  const getVideosFromDirectory = useCallback(async (directoryHandle) => {
+    const _videos = [];
+    for await (const entry of directoryHandle.values()) {
+      if (entry.kind === 'file' && isVideo(entry)) {
+        const file = await entry.getFile();
+        file._entry = entry;
+        _videos.push(file);
+      } else if (entry.kind === 'directory') {
+        const nestedVideos = await getVideosFromDirectory(entry);
+        _videos.push(...nestedVideos);
+      }
+    }
+    return _videos;
+  }, []);
 
   const handleFileChange = useCallback(async (event) => {
     if (videos.length > 0) return;
     const directoryHandle = await window.showDirectoryPicker();
     
-    const _videos = [];
-    for await (const entry of directoryHandle.values()) {
-      if (!isVideo(entry)) continue;
-      const file = await entry.getFile();
-      file._entry = entry;
-      _videos.push(file);
-    }
-
+    const _videos = await getVideosFromDirectory(directoryHandle);
     setVideos(_videos.sort(() => Math.random() - 0.5));
-  }, [videos.length]);
+  }, [getVideosFromDirectory, videos.length]);
 
   useEffect(() => {
     videoRef.current.load();
@@ -51,13 +63,12 @@ function App() {
       break;
     }
   }, [currentIdx, videos]);
-
+  
   // useEffect(() => {
   //   if (videos.length <= 0) return
 
   //   handleSwitch('s');
   // }, [handleSwitch, videos]);
-
   const handleKeyDown = useCallback((event) => {
     console.log('clicked:', event.key);
     if (videoRef.current) {
