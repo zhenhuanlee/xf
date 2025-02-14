@@ -17,30 +17,48 @@ function App() {
     
     const _videos = []
     for await (const entry of directoryHandle.values()) {
-      if (isVideo(entry)) _videos.push(await entry.getFile());
+      if (!isVideo(entry)) continue
+      const file = await entry.getFile();
+      file._entry = entry;
+      _videos.push(file);
     }
 
     setVideos(_videos.sort(() => Math.random() - 0.5));
   }, [videos.length]);
 
   useEffect(() => {
-    if (videos.length <= 0) return
-
-    const videoUrl = URL.createObjectURL(videos[0]);
-    setVideoSrc(videoUrl);
-  }, [videos]);
-
-  useEffect(() => {
     videoRef.current.load();
   }, [currentIdx, videoSrc])
 
-  const handleSwitch = useCallback(async (idx) => {
-    console.log(idx, currentIdx)
-    if (idx === currentIdx) return
+  const handleSwitch = useCallback((str) => {
+    let targetIdx = currentIdx;
 
-    setCurrentIdx(idx)
-    setVideoSrc(URL.createObjectURL(videos[idx]));
+    while (true) {
+      targetIdx = str === 'w'
+        ? Math.max(targetIdx - 1, 0)
+        : Math.min(targetIdx + 1, videos.length - 1);
+      if (targetIdx === currentIdx || targetIdx < 0) break;
+
+      console.log('targetIdx:', targetIdx, currentIdx);
+
+      const video = videos[targetIdx];
+      if (video._deleted) continue;
+
+      console.log('0000000000')
+  
+      setCurrentIdx(targetIdx);
+      const videoUrl = URL.createObjectURL(video);
+      setVideoSrc(videoUrl);
+      document.title = video.name;
+      break;
+    }
   }, [currentIdx, videos]);
+
+  // useEffect(() => {
+  //   if (videos.length <= 0) return
+
+  //   handleSwitch('s');
+  // }, [handleSwitch, videos]);
 
   const handleKeyDown = useCallback((event) => {
     console.log('clicked:', event.key);
@@ -52,19 +70,21 @@ function App() {
         case 'd':
           videoRef.current.currentTime = Math.min(videoRef.current.duration, videoRef.current.currentTime + 10);
           break;
-        case 'q':
-          break;
         case 'w':
-          handleSwitch(Math.max(currentIdx - 1, 0));
+          handleSwitch('w');
           break;
+        case 'q':
+          videos[currentIdx]._entry.remove();
+          videos[currentIdx]._deleted = true;
+        // eslint-disable-next-line no-fallthrough
         case 's':
-          handleSwitch(Math.min(currentIdx + 1, videos.length - 1));
+          handleSwitch('s');
           break;
         default:
           break;
       }
     }
-  }, [currentIdx, handleSwitch, videos.length])
+  }, [currentIdx, handleSwitch, videos])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
